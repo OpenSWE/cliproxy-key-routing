@@ -15,8 +15,10 @@ the order is a real fallback chain, not a filter.
 - **Provider-agnostic.** Emails are matched against the auth file name of any provider.
 - **Live reload.** The sidecar is re-read when its mtime changes. A broken edit keeps the last
   good table and logs the parse error.
-- **Every pick is logged** through the host log with the key's last four characters, the
-  chosen account and its rank, so the gateway log shows which account served each request.
+- **Every pick is logged** through the host log with the host name, the key's last four
+  characters, the chosen account and its rank, so the gateway log shows which account served
+  each request. The values are folded into the message text because the gateway's log formatter
+  prints only its own whitelist of structured fields.
 
 ## Install
 
@@ -24,9 +26,9 @@ Requires the Go toolchain matching the gateway's own Go version (`go version <bi
 compiler, and the same CLIProxyAPI module version as the running gateway in `go.mod`.
 
 ```sh
-make build                          # dist/cliproxy-key-routing.dylib (or .so)
+make build                          # dist/cliproxy-key-routing-v<version>.dylib (or .so)
 install -d ~/.cli-proxy-api/plugins
-install -m 0644 dist/cliproxy-key-routing.dylib ~/.cli-proxy-api/plugins/
+install -m 0644 dist/cliproxy-key-routing-v*.dylib ~/.cli-proxy-api/plugins/
 install -m 0600 host-routing.example.yaml ~/.cli-proxy-api/plugins/host-routing.yaml   # then edit
 ```
 
@@ -44,6 +46,11 @@ plugins:
 ```
 
 Restart the gateway once so it loads the dylib. Later sidecar edits need no restart.
+
+The filename carries the version (`<id>-v<version>.dylib`) because the host hot-swaps a plugin
+only when its path changes. To upgrade, install the new versioned file, delete the old one, and
+change the gateway config's content (a bare `touch` does not trigger the reload); the log then
+shows `pluginhost: plugin hot reloaded` with the active and retired versions.
 
 ## Sidecar format
 

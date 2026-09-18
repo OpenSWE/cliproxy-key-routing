@@ -55,7 +55,9 @@ import "C"
 
 import (
 	"encoding/json"
+	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"unsafe"
@@ -67,7 +69,7 @@ import (
 
 const (
 	pluginName    = "cliproxy-key-routing"
-	pluginVersion = "0.1.0"
+	pluginVersion = "0.1.1"
 	defaultFile   = "host-routing.yaml"
 )
 
@@ -263,8 +265,33 @@ func pluginDir() string {
 	return "."
 }
 
+// logFieldOrder is the display order for the fields folded into a log message.
+var logFieldOrder = []string{"host", "key", "account", "rank", "auth", "reason", "candidates", "model", "provider", "file", "err"}
+
+// logHost writes one line into the gateway log. The host's formatter prints only
+// its own whitelist of structured fields (provider, model, error, ...) and drops
+// the rest, so every field is folded into the message text instead.
 func logHost(level, msg string, fields map[string]any) {
-	_ = callHost(pluginabi.MethodHostLog, hostLog{Level: level, Message: msg, Fields: fields})
+	var b strings.Builder
+	b.WriteString(msg)
+	seen := make(map[string]bool, len(fields))
+	for _, k := range logFieldOrder {
+		if v, ok := fields[k]; ok {
+			fmt.Fprintf(&b, " %s=%v", k, v)
+			seen[k] = true
+		}
+	}
+	rest := make([]string, 0, len(fields))
+	for k := range fields {
+		if !seen[k] {
+			rest = append(rest, k)
+		}
+	}
+	sort.Strings(rest)
+	for _, k := range rest {
+		fmt.Fprintf(&b, " %s=%v", k, fields[k])
+	}
+	_ = callHost(pluginabi.MethodHostLog, hostLog{Level: level, Message: b.String()})
 }
 
 func callHost(method string, payload any) error {
