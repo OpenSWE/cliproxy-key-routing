@@ -1,0 +1,13 @@
+# cliproxy-key-routing sidecar. Lives next to the plugin dylib (or at plugins.configs.cliproxy-key-routing.file).
+# One row per inbound CLIProxyAPI api-key. `order` is a fallback chain of account emails, first live wins.
+# An email matches a credential when it appears (case-insensitively) in the auth file name,
+# e.g. claude-personal@example.com.json or claude-1a2b3c4d-personal@example.com.json.
+# Keys with no row pass through to the built-in scheduler (logged as a warning).
+# Edits are picked up on the next request; no restart needed.
+routes:
+  - key: "sk-replace-me-1"
+    name: laptop            # optional label, appears in log lines
+    order: [personal@example.com, work@example.com]
+  - key: "sk-replace-me-2"
+    name: work-desktop
+    order: [work@example.com, personal@example.com]
