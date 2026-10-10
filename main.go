@@ -69,7 +69,7 @@ import (
 
 const (
 	pluginName    = "cliproxy-key-routing"
-	pluginVersion = "0.2.0"
+	pluginVersion = "0.3.0"
 	defaultFile   = "host-routing.yaml"
 )
 
@@ -244,17 +244,22 @@ func pick(raw []byte) ([]byte, error) {
 	if name := r.byKey[key].Name; name != "" {
 		fields["host"] = name
 	}
-	if d.AuthID == "" {
+	switch {
+	case d.Reject:
+		fields["reason"] = d.Reason
+		fields["candidates"] = len(req.Candidates)
+		logHost("warn", "key-routing: reject", fields)
+	case d.AuthID == "":
 		fields["reason"] = d.Reason
 		fields["candidates"] = len(req.Candidates)
 		logHost("warn", "key-routing: pass-through", fields)
-		return unhandled()
+	default:
+		fields["account"] = d.Account
+		fields["rank"] = d.Rank
+		fields["auth"] = d.AuthID
+		logHost("info", "key-routing: pick", fields)
 	}
-	fields["account"] = d.Account
-	fields["rank"] = d.Rank
-	fields["auth"] = d.AuthID
-	logHost("info", "key-routing: pick", fields)
-	return okEnvelope(pluginapi.SchedulerPickResponse{AuthID: d.AuthID, Handled: true})
+	return okEnvelope(d.response())
 }
 
 // pluginDir is the directory the host loaded this dylib from.

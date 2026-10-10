@@ -56,6 +56,33 @@ func TestDecide(t *testing.T) {
 	}
 }
 
+func TestDecideStrict(t *testing.T) {
+	r, err := parseRoutes([]byte("routes:\n  - key: sk-co\n    order: [work@example.com]\n    strict: true\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	d := decide(r, "sk-co", cands("claude-personal@example.com.json", "claude-work@example.com.json"))
+	if d.AuthID != "claude-work@example.com.json" || d.Reject {
+		t.Fatalf("strict pick: %+v", d)
+	}
+	if resp := d.response(); !resp.Handled || resp.Reject || resp.AuthID != d.AuthID {
+		t.Fatalf("strict pick response: %+v", resp)
+	}
+	// Allowlist: the named account is cooling, so the request fails rather than use another account.
+	d = decide(r, "sk-co", cands("claude-personal@example.com.json", "codex-personal@example.com.json"))
+	if !d.Reject || d.AuthID != "" {
+		t.Fatalf("strict reject: %+v", d)
+	}
+	if resp := d.response(); !resp.Handled || !resp.Reject || resp.AuthID != "" {
+		t.Fatalf("strict reject response: %+v", resp)
+	}
+	// A non-strict row keeps passing through.
+	r, _ = parseRoutes([]byte(sample))
+	if resp := decide(r, "sk-personal", cands("codex-other@example.com.json")).response(); resp.Handled {
+		t.Fatalf("preference row must stay unhandled: %+v", resp)
+	}
+}
+
 func TestInboundKey(t *testing.T) {
 	if k := inboundKey(map[string][]string{"Authorization": {"Bearer sk-abc"}}); k != "sk-abc" {
 		t.Fatal(k)

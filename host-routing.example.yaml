@@ -11,3 +11,4 @@ routes:
   - key: "sk-replace-me-2"
     name: work-desktop
     order: [work@example.com, personal@example.com]
+  # strict: true turns the order into an allowlist: no named account live -> HTTP 503.

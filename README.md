@@ -12,6 +12,10 @@ the order is a real fallback chain, not a filter.
 
 - **Preference, not allowlist.** If no account named in the row is live, the plugin returns
   unhandled and the built-in scheduler serves from whatever remains.
+- **Strict rows are an allowlist.** A row with `strict: true` fails the request instead: the
+  client gets HTTP 503 `auth_unavailable` with the reason "strict row, no named account live",
+  and the log says `key-routing: reject`. Use it for a machine that must never borrow another
+  owner's account.
 - **Provider-agnostic.** Emails are matched against the auth file name of any provider.
 - **Live reload.** The sidecar is re-read when its mtime changes. A broken edit keeps the last
   good table and logs the parse error.

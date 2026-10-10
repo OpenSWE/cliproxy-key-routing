@@ -25,6 +25,9 @@ type route struct {
 	Key   string   `yaml:"key"`
 	Name  string   `yaml:"name,omitempty"`
 	Order []string `yaml:"order"`
+	// Strict turns the order into an allowlist: with no named account live the
+	// request fails instead of falling back to the host's round-robin.
+	Strict bool `yaml:"strict,omitempty"`
 }
 
 type routingFile struct {
@@ -103,7 +106,7 @@ func parseRoutes(raw []byte) (*routes, error) {
 			}
 			order = append(order, e)
 		}
-		out.byKey[key] = route{Key: key, Name: strings.TrimSpace(r.Name), Order: order}
+		out.byKey[key] = route{Key: key, Name: strings.TrimSpace(r.Name), Order: order, Strict: r.Strict}
 	}
 	return out, nil
 }
@@ -138,6 +141,18 @@ type decision struct {
 	Account string // email that matched
 	Rank    int    // 0-based position in the row
 	Reason  string // for the log line when unhandled
+	Reject  bool   // strict row with no named account live: fail the request
+}
+
+// response maps a decision to the host's pick response.
+func (d decision) response() pluginapi.SchedulerPickResponse {
+	switch {
+	case d.Reject:
+		return pluginapi.SchedulerPickResponse{Handled: true, Reject: true, RejectReason: "key-routing: " + d.Reason}
+	case d.AuthID != "":
+		return pluginapi.SchedulerPickResponse{AuthID: d.AuthID, Handled: true}
+	}
+	return pluginapi.SchedulerPickResponse{Handled: false}
 }
 
 var errNoKey = errors.New("no inbound api key")
@@ -158,6 +173,9 @@ func decide(r *routes, key string, candidates []pluginapi.SchedulerAuthCandidate
 				return decision{AuthID: c.ID, Account: email, Rank: rank}
 			}
 		}
+	}
+	if row.Strict {
+		return decision{Reason: "strict row, no named account live", Reject: true}
 	}
 	return decision{Reason: "no named account live"}
 }
