@@ -69,7 +69,7 @@ import (
 
 const (
 	pluginName    = "cliproxy-key-routing"
-	pluginVersion = "0.3.0"
+	pluginVersion = "0.3.1"
 	defaultFile   = "host-routing.yaml"
 )
 
